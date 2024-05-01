@@ -7,4 +7,4 @@ const server = new ApolloServer({
     resolvers: schema.resolvers
 });
 
-server.listen({port: 9000}).then(({url}) => console.log(`Server running at ${url}`));
+server.listen({port: 8000}).then(({url}) => console.log(`Server running at ${url}`));

@@ -1,7 +1,8 @@
 const { gql } = require('apollo-server-express');
-const userSchema = require("./../models/userSchema");
+const userModel = require("./../models/userSchema");
 const adminSchema = require("./../models/adminSchem");
 const uri = require('./../mongoUtils/mongo_pass')
+const jwt = require('jsonwebtoken')
 
 const { mongoose } = require('mongoose');
 
@@ -9,7 +10,7 @@ exports.typeDefs = gql `
 type User {
     name: String,
     password: String,
-    age: Number
+    age: Int
 }
 
 type Admin {
@@ -25,8 +26,8 @@ type Query {
 }
 
 type Mutation {
-    updateUser(token: String! , name: String, password: String, age: Number): Product
-    addUser(name: String, password: String, age: Number): Product
+    updateUser(token: String! , name: String, password: String, age: Int): Boolean!
+    addUser(name: String, password: String, age: Int): Boolean!
     deleteUser(token: String!): Boolean!
 } `
 
@@ -44,7 +45,7 @@ exports.resolvers = {
 
         getUserAll: async (parent, args) => {
             await connect();
-            const result = userSchema.find({}).then((res) => {
+            const result = userModel.find({}).then((res) => {
                 if (res) {
                     return res;
                 }
@@ -54,7 +55,7 @@ exports.resolvers = {
         },
         getUser: async (parent, args) => {
             await connect();
-            const result = userSchema.findById(args.id).then((res) => {
+            const result = userModel.findById(args.id).then((res) => {
                 if (res) {
                     return res;
                 }
@@ -63,50 +64,87 @@ exports.resolvers = {
 
         },
         loginUser: async (parent, args) => {
+            try {
+                await connect();
+                const result = await userModel.find({
+                    name: args.name,
+                    password: args.password
+                })
+                if (result.length > 0){
+                    let tkn  = await userModel.genrateAuthToken();
+                    return tkn;
+                }else {
+                    return "Failed"
+                }
+            }catch (e){
+                console.log(e)
+                return "Failed"
+            }
+        },
+        loginAdmin: async (parent, args) => {
             await connect();
-            const result = await userSchema.find({
+            const result = await adminSchema.find({
                 name: args.name,
                 password: args.password
             })
             if (result.length > 0){
-                let tkn  = await consumer.genrateAuthToken();
+                let tkn  = await adminSchema.genrateAuthToken();
                 return tkn;
             }else {
                 return "Failed"
             }
-        },
-        loginAdmin: async (parent, args) => {}
-        
+        }
+
     },
 
     Mutation: {
         updateUser: async (parent, args) => {
+            const token = args.token
+            jwt.verify(token,"LAB",async (err,decoded)=>
+            {
+                if(err)
+                {
+                    console.log("Verification Failed")
+                    return false
+                }
+
+                console.log("verified user")
+            })
             await connect();
-            const result = userSchema.findByIdAndUpdate(args.id, 
+            const result = userModel.findByIdAndUpdate(args.id, 
                 {
                     name: args.name,
                     password: args.password,
                     age: args.age,
-                }, {new: true}).then((res) => {
-                    if (res) {
-                        return res;
-                    }
                 })
-            return result;
+            return true;
         },
         addUser :  async (parent, args) => {
-            await connect();
-            let product = new ProductModel({
-                name: args.name,
-                password: args.password,
-                age: args.age,
-            });
-           const result = product.save().then((res) => {
-                return res;
-            })
-            return result;
+            try {
+                await connect();
+                let product = new userModel({
+                    name: args.name,
+                    password: args.password,
+                    age: args.age,
+                });
+                const result = await product.save()
+                return true;
+            } catch (e){
+                console.log(e)
+                return false
+            }
         },
         deleteUser:  async (parent, args) => {
+            const token = args.token
+            jwt.verify(token,"LAB",async (err,decoded)=>
+            {
+                if(err)
+                {
+                    console.log("Verification Failed")
+                    return false
+                }
+                console.log("verified user")
+            })
             try {
                 await connect();
                 await ProductModel.findOneAndRemove({_id: args.id});

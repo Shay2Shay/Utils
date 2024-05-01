@@ -7,8 +7,10 @@ const userSchema = new mongoose.Schema({
 })
 
 userSchema.methods.genrateAuthToken=function(){
-    const token=jwt.sign({_id:this._id},process.env.JWTPRIVATEKEY,{expiresIn:"1d"})
+    const token=jwt.sign({_id:this._id},"LAB",{expiresIn:"1d"})
     return token;
 }
 
-module.exports = mongoose.model('LabUser', userSchema);
+const userModel = mongoose.model('LabUser', userSchema);
+
+module.exports = userModel
